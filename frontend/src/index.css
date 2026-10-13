@@ -8,49 +8,44 @@
 
 body {
   margin: 0;
-  background-color: #060b17;
-  color: #f1f5f9;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: #090d16;
+  color: #e2e8f0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
-/* Custom Sleek Scrollbar */
+/* Crisp Technical Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0b1329;
+  background: #090d16;
 }
 
 ::-webkit-scrollbar-thumb {
   background: #1e293b;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #0ea5e9;
+  background: #334155;
 }
 
-/* Glass Card Utility */
-.glass-panel {
-  background-color: rgba(11, 19, 41, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(30, 41, 59, 0.8);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+/* Research Workbench Card Panels */
+.workbench-panel {
+  background-color: #0f1523;
+  border: 1px solid #1e2638;
+  border-radius: 0.75rem;
 }
 
-.glass-panel-glow {
-  background-color: rgba(11, 19, 41, 0.85);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(6, 182, 212, 0.3);
-  box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.15);
+.workbench-panel-subtle {
+  background-color: #131b2e;
+  border: 1px solid #253147;
 }
 
-.cyber-grid {
-  background-size: 32px 32px;
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
