@@ -1,0 +1,33 @@
+{
+  "name": "rumor-radar",
+  "version": "1.0.0",
+  "description": "RumorRadar - Social Media Misinformation Analytics & Feature-Fusion Research Platform",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:ml": "powershell -ExecutionPolicy Bypass -File ./scripts/run-ml.ps1",
+    "build:all": "npm run build --prefix backend && npm run build --prefix frontend",
+    "test:all": "npm run test --prefix backend && npm run test --prefix frontend"
+  },
+  "keywords": [
+    "misinformation",
+    "fake-news",
+    "nlp",
+    "sentiment-analysis",
+    "emotion-detection",
+    "social-engagement",
+    "fastapi",
+    "express",
+    "react",
+    "vite",
+    "typescript"
+  ],
+  "author": "RumorRadar Research Team",
+  "license": "MIT"
+}

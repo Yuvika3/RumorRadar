@@ -1,0 +1,6 @@
+{
+  "datasetId": "ds_d604fbf5",
+  "algorithm": "logistic_regression",
+  "testSize": 0.2,
+  "randomState": 42
+}
