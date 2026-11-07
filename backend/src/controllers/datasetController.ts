@@ -6,7 +6,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { StoreService } from '../services/storeService';
 import { MLClient } from '../services/mlClient';
 
-const DATASETS_DIR = path.resolve(__dirname, '../../../datasets');
+const DATASETS_DIR = process.env.DATASETS_DIR
+  ? path.resolve(process.env.DATASETS_DIR)
+  : path.resolve(__dirname, '../../../datasets');
 
 async function autoSeedDefaultDatasets() {
   const existing = await StoreService.getAllDatasets();
@@ -15,7 +17,7 @@ async function autoSeedDefaultDatasets() {
   const defaultDatasets = [
     {
       filename: 'fakenewsnet_politifact.csv',
-      name: 'FakeNewsNet PolitiFact Benchmark',
+      name: 'FakeNewsNet PolitiFact Benchmark (Multimodal)',
       textColumn: 'title',
       labelColumn: 'label',
       engagementColumn: 'tweet_count',
@@ -23,7 +25,7 @@ async function autoSeedDefaultDatasets() {
     },
     {
       filename: 'fakenewsnet_politifact_no_engagement.csv',
-      name: 'FakeNewsNet PolitiFact (Text-Only / No Engagement)',
+      name: 'FakeNewsNet PolitiFact Baseline (Text-Only / No Engagement)',
       textColumn: 'title',
       labelColumn: 'label',
       engagementColumn: null,

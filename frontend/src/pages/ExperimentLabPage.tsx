@@ -21,9 +21,42 @@ interface ExperimentLabPageProps {
   onNavigate: (tab: string) => void;
 }
 
+const FALLBACK_DATASETS: Dataset[] = [
+  {
+    id: 'ds_d604fbf5',
+    name: 'FakeNewsNet PolitiFact Benchmark (Multimodal)',
+    filename: 'fakenewsnet_politifact.csv',
+    filepath: 'datasets/fakenewsnet_politifact.csv',
+    totalRows: 1056,
+    totalColumns: 7,
+    textColumn: 'title',
+    labelColumn: 'label',
+    engagementColumn: 'tweet_count',
+    hasEngagement: true,
+    classDistribution: { '0': 624, '1': 432 },
+    columns: [],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'ds_05b6f3d7',
+    name: 'FakeNewsNet PolitiFact Baseline (Text-Only / No Engagement)',
+    filename: 'fakenewsnet_politifact_no_engagement.csv',
+    filepath: 'datasets/fakenewsnet_politifact_no_engagement.csv',
+    totalRows: 1056,
+    totalColumns: 6,
+    textColumn: 'title',
+    labelColumn: 'label',
+    engagementColumn: null,
+    hasEngagement: false,
+    classDistribution: { '0': 624, '1': 432 },
+    columns: [],
+    createdAt: new Date().toISOString()
+  }
+];
+
 export const ExperimentLabPage: React.FC<ExperimentLabPageProps> = ({ onNavigate }) => {
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [selectedDatasetId, setSelectedDatasetId] = useState<string>('');
+  const [datasets, setDatasets] = useState<Dataset[]>(FALLBACK_DATASETS);
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string>(FALLBACK_DATASETS[0].id);
 
   // Feature selection checkboxes
   const [useText, setUseText] = useState(true);
@@ -48,29 +81,71 @@ export const ExperimentLabPage: React.FC<ExperimentLabPageProps> = ({ onNavigate
     const loadDatasets = async () => {
       try {
         const list = await api.getDatasets();
-        setDatasets(list);
-        if (list.length > 0) {
-          setSelectedDatasetId(list[0].id);
+        if (list && list.length > 0) {
+          setDatasets(list);
+          setSelectedDatasetId((prev) => (prev ? (list.some(d => d.id === prev) ? prev : list[0].id) : list[0].id));
+        } else {
+          setDatasets(FALLBACK_DATASETS);
+          setSelectedDatasetId((prev) => prev || FALLBACK_DATASETS[0].id);
         }
       } catch (err) {
         console.error('Failed to load datasets:', err);
+        setDatasets(FALLBACK_DATASETS);
+        setSelectedDatasetId((prev) => prev || FALLBACK_DATASETS[0].id);
       }
     };
     loadDatasets();
   }, []);
 
-  const selectedDataset = datasets.find((d) => d.id === selectedDatasetId);
+  const selectedDataset = datasets.find((d) => d.id === selectedDatasetId) || datasets[0] || FALLBACK_DATASETS[0];
 
-  // Derive feature mode
+  const handleDatasetChange = (newId: string) => {
+    setSelectedDatasetId(newId);
+    setError(null);
+    const target = datasets.find((d) => d.id === newId);
+    if (target && !target.hasEngagement) {
+      setUseEngagement(false);
+    }
+  };
+
+  // Effective engagement flag: active only if user checked it AND dataset supports it
+  const effectiveUseEngagement = useEngagement && Boolean(selectedDataset?.hasEngagement);
+
+  // Derive feature mode cleanly based on effective selections
   const getDerivedFeatureMode = (): 'text_only' | 'sentiment_emotion_only' | 'text_sentiment_emotion' | 'text_engagement' | 'combined' => {
-    if (useText && useSentEmo && useEngagement) return 'combined';
-    if (useText && useEngagement) return 'text_engagement';
+    if (useText && useSentEmo && effectiveUseEngagement) return 'combined';
+    if (useText && effectiveUseEngagement) return 'text_engagement';
     if (useText && useSentEmo) return 'text_sentiment_emotion';
     if (!useText && useSentEmo) return 'sentiment_emotion_only';
     return 'text_only';
   };
 
   const featureMode = getDerivedFeatureMode();
+
+  const applyPreset = (preset: 'baseline' | 'affective' | 'text_affective' | 'fusion') => {
+    setError(null);
+    if (preset === 'baseline') {
+      setUseText(true);
+      setUseSentEmo(false);
+      setUseEngagement(false);
+    } else if (preset === 'affective') {
+      setUseText(false);
+      setUseSentEmo(true);
+      setUseEngagement(false);
+    } else if (preset === 'text_affective') {
+      setUseText(true);
+      setUseSentEmo(true);
+      setUseEngagement(false);
+    } else if (preset === 'fusion') {
+      setUseText(true);
+      setUseSentEmo(true);
+      if (selectedDataset?.hasEngagement) {
+        setUseEngagement(true);
+      } else {
+        setUseEngagement(false);
+      }
+    }
+  };
 
   // Polling loop for active training job
   useEffect(() => {
@@ -141,7 +216,11 @@ export const ExperimentLabPage: React.FC<ExperimentLabPageProps> = ({ onNavigate
     setAblationResults(null);
     setRunning(true);
     setCurrentProgress(25);
-    setJobMessage('Running comprehensive 5-configuration ablation study...');
+    setJobMessage(
+      selectedDataset.hasEngagement
+        ? 'Running comprehensive 5-configuration ablation study...'
+        : 'Running 3-configuration text & affective ablation study (engagement metrics unavailable)...'
+    );
 
     try {
       const abl = await api.runAblation({
@@ -182,41 +261,121 @@ export const ExperimentLabPage: React.FC<ExperimentLabPageProps> = ({ onNavigate
           <form onSubmit={handleTrainSubmit} className="space-y-6">
             {/* Dataset Selection */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                1. Benchmark Dataset
-              </label>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                  1. Benchmark Dataset
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400">Quick Select:</span>
+                  {datasets.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => handleDatasetChange(d.id)}
+                      className={`text-[11px] px-2.5 py-1 rounded-md border font-medium transition-all ${
+                        selectedDataset.id === d.id
+                          ? 'bg-cyan-950 border-cyan-500 text-cyan-300 shadow-sm'
+                          : 'bg-navy-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                      }`}
+                    >
+                      {d.hasEngagement ? '📊 Multimodal Benchmark' : '🎯 Baseline Dataset (Text-Only)'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <select
-                value={selectedDatasetId}
-                onChange={(e) => setSelectedDatasetId(e.target.value)}
+                value={selectedDataset.id}
+                onChange={(e) => handleDatasetChange(e.target.value)}
                 className="w-full bg-navy-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
               >
                 {datasets.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.name} ({d.totalRows} rows, {d.hasEngagement ? 'Engagement Included' : 'No Engagement'})
+                    {d.name} ({d.totalRows} rows — {d.hasEngagement ? 'Engagement Included' : 'Baseline Dataset / No Engagement'})
                   </option>
                 ))}
               </select>
 
               {selectedDataset && !selectedDataset.hasEngagement && (
-                <div className="mt-2 p-2.5 rounded-lg bg-amber-950/40 border border-amber-800 text-amber-300 text-xs flex items-center gap-2">
-                  <Info className="w-4 h-4 flex-shrink-0" />
-                  <span>Notice: This dataset lacks social engagement fields. Engagement experiments will be disabled to preserve research validity.</span>
+                <div className="mt-2 p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-800/80 text-cyan-300 text-xs flex items-center gap-2">
+                  <Info className="w-4 h-4 flex-shrink-0 text-cyan-400" />
+                  <span>
+                    <strong>Baseline Benchmark Selected:</strong> This verified benchmark contains headline text and fact-check labels without engagement metrics. Social engagement is automatically disabled to preserve research validity.
+                  </span>
                 </div>
               )}
             </div>
 
             {/* Feature Modalities */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                2. Feature Modalities to Include
-              </label>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                  2. Feature Modalities to Include
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400">Presets:</span>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('baseline')}
+                    className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
+                      featureMode === 'text_only'
+                        ? 'bg-cyan-950 border-cyan-600 text-cyan-300 font-bold'
+                        : 'bg-navy-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    📝 Text Baseline
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('affective')}
+                    className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
+                      featureMode === 'sentiment_emotion_only'
+                        ? 'bg-cyan-950 border-cyan-600 text-cyan-300 font-bold'
+                        : 'bg-navy-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    🎭 Affective Only
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('text_affective')}
+                    className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
+                      featureMode === 'text_sentiment_emotion'
+                        ? 'bg-cyan-950 border-cyan-600 text-cyan-300 font-bold'
+                        : 'bg-navy-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    📝+🎭 Text + Affective
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedDataset?.hasEngagement}
+                    onClick={() => applyPreset('fusion')}
+                    className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
+                      featureMode === 'combined'
+                        ? 'bg-cyan-950 border-cyan-600 text-cyan-300 font-bold'
+                        : selectedDataset?.hasEngagement
+                        ? 'bg-navy-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                        : 'bg-navy-950/40 border-slate-900 text-slate-600 cursor-not-allowed opacity-50'
+                    }`}
+                  >
+                    ⚡ Full Fusion
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Text Content */}
                 <label className="flex items-start gap-3 p-3 rounded-lg bg-navy-950 border border-slate-800 cursor-pointer hover:border-slate-700">
                   <input
                     type="checkbox"
                     checked={useText}
-                    onChange={(e) => setUseText(e.target.checked)}
+                    onChange={(e) => {
+                      if (!e.target.checked && !useSentEmo) {
+                        setUseSentEmo(true);
+                      }
+                      setUseText(e.target.checked);
+                    }}
                     className="mt-1 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0"
                   />
                   <div>
@@ -230,7 +389,12 @@ export const ExperimentLabPage: React.FC<ExperimentLabPageProps> = ({ onNavigate
                   <input
                     type="checkbox"
                     checked={useSentEmo}
-                    onChange={(e) => setUseSentEmo(e.target.checked)}
+                    onChange={(e) => {
+                      if (!e.target.checked && !useText) {
+                        setUseText(true);
+                      }
+                      setUseSentEmo(e.target.checked);
+                    }}
                     className="mt-1 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0"
                   />
                   <div>
@@ -249,14 +413,18 @@ export const ExperimentLabPage: React.FC<ExperimentLabPageProps> = ({ onNavigate
                 >
                   <input
                     type="checkbox"
-                    checked={useEngagement && Boolean(selectedDataset?.hasEngagement)}
+                    checked={effectiveUseEngagement}
                     disabled={!selectedDataset?.hasEngagement}
                     onChange={(e) => setUseEngagement(e.target.checked)}
                     className="mt-1 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0"
                   />
                   <div>
                     <span className="text-xs font-bold text-slate-200 block">Social Engagement</span>
-                    <span className="text-[10px] text-slate-400">Tweet shares & reshares (log1p scaled)</span>
+                    <span className="text-[10px] text-slate-400">
+                      {selectedDataset?.hasEngagement
+                        ? 'Tweet shares & reshares (log1p scaled)'
+                        : 'Unavailable in baseline dataset'}
+                    </span>
                   </div>
                 </label>
               </div>
@@ -346,7 +514,9 @@ export const ExperimentLabPage: React.FC<ExperimentLabPageProps> = ({ onNavigate
                 className="px-5 py-2.5 rounded-lg bg-navy-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-semibold text-xs flex items-center gap-2 disabled:opacity-50"
               >
                 <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                Run Full 5-Configuration Ablation Suite
+                {selectedDataset?.hasEngagement
+                  ? 'Run Full 5-Configuration Ablation Suite'
+                  : 'Run 3-Configuration Baseline Ablation Suite'}
               </button>
             </div>
           </form>
@@ -607,22 +777,28 @@ export const ExperimentLabPage: React.FC<ExperimentLabPageProps> = ({ onNavigate
                       <FeatureBadge mode={res.feature_mode} />
                     </td>
                     <td className="py-3 px-4 text-cyan-300">
-                      {(res.accuracy * 100).toFixed(2)}%
+                      {res.error ? (
+                        <span className="text-rose-400">Error</span>
+                      ) : (
+                        `${((res.accuracy ?? 0) * 100).toFixed(2)}%`
+                      )}
                     </td>
                     <td className="py-3 px-4 text-emerald-400 font-bold">
-                      {(res.f1_score * 100).toFixed(2)}%
+                      {res.error ? '-' : `${((res.f1_score ?? 0) * 100).toFixed(2)}%`}
                     </td>
                     <td className="py-3 px-4 text-slate-300">
-                      {(res.precision * 100).toFixed(2)}%
+                      {res.error ? '-' : `${((res.precision ?? 0) * 100).toFixed(2)}%`}
                     </td>
                     <td className="py-3 px-4 text-slate-300">
-                      {(res.recall * 100).toFixed(2)}%
+                      {res.error ? '-' : `${((res.recall ?? 0) * 100).toFixed(2)}%`}
                     </td>
                     <td className="py-3 px-4 text-purple-300">
-                      {res.roc_auc.toFixed(4)}
+                      {res.error ? '-' : res.roc_auc !== undefined ? res.roc_auc.toFixed(4) : '-'}
                     </td>
                     <td className="py-3 px-4 text-right">
-                      {res.f1_delta_from_baseline > 0 ? (
+                      {res.error ? (
+                        <span className="text-rose-400 text-[10px]">{res.error}</span>
+                      ) : res.f1_delta_from_baseline > 0 ? (
                         <span className="text-emerald-400 font-bold">
                           +{(res.f1_delta_from_baseline * 100).toFixed(2)}%
                         </span>

@@ -62,9 +62,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => onTabChange('home')}
             className="flex items-center gap-3 cursor-pointer group"
           >
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-cyan-400 text-slate-950 font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] group-hover:scale-105 transition-transform">
-              <Radar className="w-6 h-6 animate-spin [animation-duration:8s]" />
-              <div className="absolute inset-0 rounded-xl bg-cyan-400 animate-ping opacity-20" />
+            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-slate-800 text-cyan-400 border border-slate-700">
+              <Radar className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
               <div className="flex items-center gap-2">

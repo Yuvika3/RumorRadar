@@ -22,54 +22,50 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onOpenInference 
   return (
     <div className="space-y-12">
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-2xl glass-panel-glow p-8 sm:p-12 border border-cyan-500/30">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 max-w-4xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-800 text-cyan-300 text-xs font-mono font-medium mb-6">
-            <Radar className="w-3.5 h-3.5 animate-spin [animation-duration:10s]" />
-            Academic Web & Social Media Analytics Capstone
+      <section className="workbench-panel p-8 sm:p-10 border border-slate-800">
+        <div className="max-w-4xl">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-slate-300 text-xs font-mono mb-5">
+            <span className="w-2 h-2 rounded-full bg-cyan-400" />
+            Web & Social Media Analytics • Academic Research Project
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-            Rumor<span className="text-cyan-400">Radar</span>: Multimodal Misinformation Analytics
+          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-white leading-snug">
+            RumorRadar: Social Media Misinformation Analytics
           </h1>
 
-          <div className="mt-6 p-5 rounded-xl bg-navy-950/90 border border-slate-800 text-slate-200">
-            <span className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider block mb-1">
+          <div className="mt-5 p-4 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-200">
+            <span className="text-[11px] font-mono font-semibold text-cyan-400 uppercase tracking-wider block mb-1">
               Primary Research Question
             </span>
-            <p className="text-base sm:text-lg font-medium italic text-slate-100">
+            <p className="text-sm sm:text-base font-normal italic text-slate-100">
               "Does combining textual content, sentiment/emotion features, and social engagement features improve misinformation classification compared with text-only machine learning models?"
             </p>
           </div>
 
-          <p className="mt-4 text-sm sm:text-base text-slate-400 max-w-3xl leading-relaxed">
-            RumorRadar implements rigorous, reproducible machine learning experiments on genuine fact-checked benchmarks (FakeNewsNet PolitiFact). Ground-truth fact-check labels serve as the sole veracity standard—avoiding subjective assumptions that emotional intensity or viral retweets alone prove falsehood.
+          <p className="mt-4 text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
+            RumorRadar evaluates whether multi-feature representation (textual lexical patterns, sentiment valence, psychological emotion vectors, and social resharing volume) outperforms standard text baselines on held-out fact-checked benchmarks (FakeNewsNet PolitiFact). Ground-truth labels from verified fact-checkers serve as the sole criterion of veracity.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-4">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <button
               onClick={() => onNavigate('lab')}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-slate-950 font-bold text-sm flex items-center gap-2 transition-all duration-200 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+              className="px-4 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-semibold text-xs flex items-center gap-2 transition-colors"
             >
               Launch Experiment Lab
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => onNavigate('comparison')}
-              className="px-5 py-3 rounded-xl bg-navy-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-sm flex items-center gap-2 transition-colors"
+              className="px-4 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-medium text-xs flex items-center gap-2 transition-colors"
             >
-              <Layers className="w-4 h-4 text-cyan-400" />
+              <Layers className="w-3.5 h-3.5 text-slate-400" />
               View Ablation Study
             </button>
             <button
               onClick={onOpenInference}
-              className="px-5 py-3 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-800 text-cyan-300 font-semibold text-sm flex items-center gap-2 transition-colors"
+              className="px-4 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-cyan-300 font-medium text-xs flex items-center gap-2 transition-colors"
             >
-              <Sparkles className="w-4 h-4" />
-              Test Live Claim
+              Test Single Claim
             </button>
           </div>
         </div>

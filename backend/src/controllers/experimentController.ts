@@ -1,7 +1,13 @@
 import { Request, Response } from 'express';
+import path from 'path';
+import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { StoreService } from '../services/storeService';
 import { MLClient } from '../services/mlClient';
+
+const DATASETS_DIR = process.env.DATASETS_DIR
+  ? path.resolve(process.env.DATASETS_DIR)
+  : path.resolve(__dirname, '../../../datasets');
 
 export const ExperimentController = {
   async listExperiments(req: Request, res: Response) {
@@ -69,10 +75,18 @@ export const ExperimentController = {
 
       await StoreService.saveExperiment(newExperiment);
 
+      let resolvedFilepath = dataset.filepath;
+      if (!fs.existsSync(resolvedFilepath)) {
+        const candidate = path.resolve(DATASETS_DIR, dataset.filename || path.basename(dataset.filepath));
+        if (fs.existsSync(candidate)) {
+          resolvedFilepath = candidate;
+        }
+      }
+
       // Trigger background training in ML service
       try {
         await MLClient.trainExperiment({
-          dataset_path: dataset.filepath,
+          dataset_path: resolvedFilepath,
           text_column: dataset.textColumn,
           label_column: dataset.labelColumn,
           engagement_column: dataset.hasEngagement ? dataset.engagementColumn : null,
@@ -166,8 +180,16 @@ export const ExperimentController = {
         return res.status(404).json({ success: false, message: 'Specified dataset not found' });
       }
 
+      let resolvedFilepath = dataset.filepath;
+      if (!fs.existsSync(resolvedFilepath)) {
+        const candidate = path.resolve(DATASETS_DIR, dataset.filename || path.basename(dataset.filepath));
+        if (fs.existsSync(candidate)) {
+          resolvedFilepath = candidate;
+        }
+      }
+
       const ablationResult = await MLClient.runAblation({
-        dataset_path: dataset.filepath,
+        dataset_path: resolvedFilepath,
         text_column: dataset.textColumn,
         label_column: dataset.labelColumn,
         engagement_column: dataset.hasEngagement ? dataset.engagementColumn : null,

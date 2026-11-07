@@ -79,6 +79,23 @@ class PredictRequest(BaseModel):
 class ProfileRequest(BaseModel):
     dataset_path: str
 
+def resolve_dataset_path(path: str) -> str:
+    """Robustly resolves dataset path across operating systems (Windows/Linux) and deployment environments."""
+    if os.path.exists(path):
+        return path
+    base = os.path.basename(path.replace("\\", "/"))
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "..", "datasets", base),
+        os.path.join(os.path.dirname(__file__), "..", "datasets", base),
+        os.path.join(os.getcwd(), "datasets", base),
+        os.path.join(os.getcwd(), "..", "datasets", base),
+        os.path.join(os.environ.get("DATASETS_DIR", ""), base)
+    ]
+    for c in candidates:
+        if c and os.path.exists(c):
+            return os.path.abspath(c)
+    return path
+
 @app.get("/api/ml/health")
 def health():
     return {
@@ -95,14 +112,9 @@ def profile_dataset(req: ProfileRequest):
     Validates CSV file, computes missing values, class distributions,
     duplicate counts, and identifies candidate text/label/engagement columns.
     """
-    path = req.dataset_path
+    path = resolve_dataset_path(req.dataset_path)
     if not os.path.exists(path):
-        # Check relative to datasets folder
-        alt_path = os.path.join(os.path.dirname(__file__), "..", "..", "datasets", os.path.basename(path))
-        if os.path.exists(alt_path):
-            path = alt_path
-        else:
-            raise HTTPException(status_code=404, detail=f"Dataset file not found at: {path}")
+        raise HTTPException(status_code=404, detail=f"Dataset file not found at: {path}")
 
     try:
         df = pd.read_csv(path, encoding="utf-8", on_bad_lines="skip")
@@ -187,11 +199,7 @@ def run_training_worker(job_id: str, req: TrainRequest):
     JOBS[job_id]["progress"] = 20
     JOBS[job_id]["message"] = "Loading dataset and extracting features..."
 
-    path = req.dataset_path
-    if not os.path.exists(path):
-        alt_path = os.path.join(os.path.dirname(__file__), "..", "..", "datasets", os.path.basename(path))
-        if os.path.exists(alt_path):
-            path = alt_path
+    path = resolve_dataset_path(req.dataset_path)
 
     try:
         df = pd.read_csv(path, encoding="utf-8", on_bad_lines="skip")
@@ -255,11 +263,7 @@ def run_ablation_study(req: AblationRequest):
     4. Text + engagement (if available)
     5. Combined (text + sentiment/emotion + engagement, if available)
     """
-    path = req.dataset_path
-    if not os.path.exists(path):
-        alt_path = os.path.join(os.path.dirname(__file__), "..", "..", "datasets", os.path.basename(path))
-        if os.path.exists(alt_path):
-            path = alt_path
+    path = resolve_dataset_path(req.dataset_path)
         else:
             raise HTTPException(status_code=404, detail=f"Dataset not found: {path}")
 
@@ -338,6 +342,17 @@ def run_ablation_study(req: AblationRequest):
             f"Combined model F1-score was {combined_entry['f1_score']:.4f} vs baseline {text_entry['f1_score']:.4f} "
             f"(delta: {delta:+.4f})."
         )
+    elif text_entry and "f1_score" in text_entry:
+        affective_entry = next((r for r in results if r.get("feature_mode") == "text_sentiment_emotion"), None)
+        if affective_entry and "f1_score" in affective_entry:
+            delta = affective_entry["f1_score"] - text_entry["f1_score"]
+            improvement_summary = (
+                f"On this baseline dataset (no engagement), adding sentiment and emotion features yielded an F1-score delta of {delta:+.4f} "
+                f"({text_entry['f1_score']:.4f} -> {affective_entry['f1_score']:.4f}) relative to the text baseline."
+            )
+            hypothesis_supported = delta > 0.005
+        else:
+            improvement_summary = f"Text baseline achieved F1-score of {text_entry['f1_score']:.4f} on held-out split."
 
     return {
         "dataset_name": req.dataset_name,
@@ -452,13 +467,9 @@ def get_analytics_distribution(
     Computes statistical emotion, sentiment, and engagement distributions
     grouped by ground truth label across the dataset.
     """
-    path = dataset_path
+    path = resolve_dataset_path(dataset_path)
     if not os.path.exists(path):
-        alt_path = os.path.join(os.path.dirname(__file__), "..", "..", "datasets", os.path.basename(path))
-        if os.path.exists(alt_path):
-            path = alt_path
-        else:
-            raise HTTPException(status_code=404, detail=f"Dataset not found: {path}")
+        raise HTTPException(status_code=404, detail=f"Dataset not found: {path}")
 
     df = pd.read_csv(path, encoding="utf-8", on_bad_lines="skip")
     df = df.dropna(subset=[text_column, label_column])

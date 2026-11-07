@@ -63,7 +63,7 @@ export const StoreService = {
       }
     }
     const store = ensureStoreFile();
-    return store.datasets.find((d) => d.id === id) || null;
+    return store.datasets.find((d) => d.id === id || d.filename === id) || null;
   },
 
   async saveDataset(datasetData: any): Promise<any> {
